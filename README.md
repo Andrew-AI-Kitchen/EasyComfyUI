@@ -1,5 +1,7 @@
 # EasyComfyUI
 
+English | [简体中文](README.zh-CN.md)
+
 A lightweight, read-only workflow viewer for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) — designed for quick inspection and learning on mobile and browser.
 
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-brightgreen)
@@ -53,7 +55,8 @@ EasyComfyUI does **not** automatically download models or resources. It simply s
 
 ## Screenshots
 
-> Screenshots coming soon. See `docs/screenshots/` after the first release.
+![EasyComfyUI on Android](docs/screenshots/EasyComfyUI-android.png)
+![EasyComfyUI on Web](docs/screenshots/EasyComfyUI-web.png)
 
 ## Download
 
@@ -64,10 +67,17 @@ Download the latest APK from the [Releases](https://github.com/Andrew-AI-Kitchen
 | Build | File | Use Case |
 |-------|------|----------|
 | Alpha | `EasyComfyUI-v0.1.0-alpha.apk` | Real device installation via file manager |
+|---|---|---|---|
 
 ### Web
 
-Open `web-viewer/index.html` in any modern browser (Chrome, Firefox, Safari, Edge). No server required — it works entirely client-side.
+Open `web-viewer/index.html` in any modern browser (Chrome, Firefox, Safari, Edge). Because the viewer uses ES modules, you need a local HTTP server:
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open `http://localhost:8000/web-viewer/index.html` in your browser.
 
 ## Android Usage
 
@@ -115,15 +125,16 @@ It does **not**:
 
 ## Node Source Classification
 
-EasyComfyUI classifies nodes into three categories based on the built-in node definitions:
+EasyComfyUI classifies nodes into four categories based on the built-in node definitions and heuristic analysis:
 
 | Category | Description |
 |----------|-------------|
-| **Built-in** | Nodes that match known ComfyUI core node types |
-| **Custom** | Nodes from custom nodes or extensions |
-| **Missing** | Nodes whose type is not recognized at all |
+| **Built-in Core** | Nodes that match known ComfyUI built-in node types |
+| **Subgraph** | Nodes that appear to be subgraph/group nodes embedded in the workflow |
+| **Known Custom** | Nodes that match known custom node types from popular extensions |
+| **Unknown or likely custom** | Nodes whose type is not recognized — likely from custom nodes not in the reference list |
 
-This classification helps you understand which parts of a workflow rely on standard vs. custom components.
+This classification helps you understand which parts of a workflow rely on standard vs. custom components. Note that the classification is based on a static reference list and may not be exhaustive — a node classified as "Unknown or likely custom" may still be a built-in node not covered by the current reference data.
 
 ## Relationship to ComfyUI
 

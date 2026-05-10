@@ -1,5 +1,7 @@
 # EasyComfyUI
 
+[English](README.md) | 简体中文
+
 一个轻量级的只读工作流查看器，专为 [ComfyUI](https://github.com/comfyanonymous/ComfyUI) 设计——让你在手机和浏览器上快速查看和学习工作流。
 
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-brightgreen)
@@ -53,7 +55,8 @@ EasyComfyUI **不会自动下载模型或资源**。它只是把工作流中已�
 
 ## 截图
 
-> 截图即将添加。首次发布后请查看 `docs/screenshots/` 目录。
+![EasyComfyUI Android 截图](docs/screenshots/EasyComfyUI-android.png)
+![EasyComfyUI Web 截图](docs/screenshots/EasyComfyUI-web.png)
 
 ## 下载
 
@@ -64,10 +67,17 @@ EasyComfyUI **不会自动下载模型或资源**。它只是把工作流中已�
 | 构建类型 | 文件 | 用途 |
 |---------|------|------|
 | Alpha | `EasyComfyUI-v0.1.0-alpha.apk` | 真机文件管理器安装 |
+|---|---|---|---|
 
 ### Web
 
-在任何现代浏览器（Chrome、Firefox、Safari、Edge）中打开 `web-viewer/index.html`。无需服务器——完全在客户端运行。
+在任何现代浏览器（Chrome、Firefox、Safari、Edge）中打开 `web-viewer/index.html`。由于查看器使用 ES 模块，你需要一个本地 HTTP 服务器：
+
+```bash
+python3 -m http.server 8000
+```
+
+然后在浏览器中打开 `http://localhost:8000/web-viewer/index.html`。
 
 ## Android 使用说明
 
@@ -115,15 +125,16 @@ EasyComfyUI 是一个**只读工作流查看器**。它专注于：
 
 ## 节点来源分类
 
-EasyComfyUI 根据内置节点定义将节点分为三类：
+EasyComfyUI 根据内置节点定义和启发式分析将节点分为四类：
 
 | 类别 | 说明 |
 |------|------|
-| **内置** | 匹配已知 ComfyUI 核心节点类型的节点 |
-| **自定义** | 来自自定义节点或扩展的节点 |
-| **缺失** | 无法识别类型的节点 |
+| **内置核心** | 匹配已知 ComfyUI 内置节点类型的节点 |
+| **子图** | 看起来是工作流中嵌入的子图/分组节点 |
+| **已知自定义** | 匹配已知流行扩展的自定义节点类型的节点 |
+| **未知或可能自定义** | 无法识别类型的节点——可能来自参考列表中未收录的自定义节点 |
 
-这种分类帮助你理解工作流中哪些部分依赖标准组件，哪些依赖自定义组件。
+这种分类帮助你理解工作流中哪些部分依赖标准组件，哪些依赖自定义组件。请注意，分类基于静态参考列表，可能并不全面——被归类为"未知或可能自定义"的节点仍可能是当前参考数据未覆盖的内置节点。
 
 ## 与 ComfyUI 的关系
 
