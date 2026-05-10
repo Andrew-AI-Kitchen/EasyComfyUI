@@ -63,6 +63,10 @@ EasyComfyUI **不会自动下载模型或资源**。它只是把工作流中已�
 
 ![EasyComfyUI Web 工作流查看器](docs/screenshots/EasyComfyUI-web.png)
 
+### 节点筛选与节点来源摘要
+
+![EasyComfyUI 节点筛选与节点来源摘要](docs/screenshots/EasyComfyUI-node.png)
+
 ## 下载
 
 ### Android

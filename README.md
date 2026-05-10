@@ -63,6 +63,10 @@ EasyComfyUI does **not** automatically download models or resources. It simply s
 
 ![EasyComfyUI web workflow viewer](docs/screenshots/EasyComfyUI-web.png)
 
+### Node filtering and source summary
+
+![EasyComfyUI node filtering and source summary](docs/screenshots/EasyComfyUI-node.png)
+
 ## Download
 
 ### Android
