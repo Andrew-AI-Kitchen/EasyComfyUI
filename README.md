@@ -55,8 +55,13 @@ EasyComfyUI does **not** automatically download models or resources. It simply s
 
 ## Screenshots
 
-![EasyComfyUI on Android](docs/screenshots/EasyComfyUI-android.png)
-![EasyComfyUI on Web](docs/screenshots/EasyComfyUI-web.png)
+### Android
+
+![EasyComfyUI Android workflow viewer](docs/screenshots/EasyComfyUI-android.png)
+
+### Web
+
+![EasyComfyUI web workflow viewer](docs/screenshots/EasyComfyUI-web.png)
 
 ## Download
 
@@ -65,9 +70,8 @@ EasyComfyUI does **not** automatically download models or resources. It simply s
 Download the latest APK from the [Releases](https://github.com/Andrew-AI-Kitchen/EasyComfyUI/releases) page.
 
 | Build | File | Use Case |
-|-------|------|----------|
+|---|---|---|
 | Alpha | `EasyComfyUI-v0.1.0-alpha.apk` | Real device installation via file manager |
-|---|---|---|---|
 
 ### Web
 

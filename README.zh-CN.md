@@ -55,8 +55,13 @@ EasyComfyUI **不会自动下载模型或资源**。它只是把工作流中已�
 
 ## 截图
 
-![EasyComfyUI Android 截图](docs/screenshots/EasyComfyUI-android.png)
-![EasyComfyUI Web 截图](docs/screenshots/EasyComfyUI-web.png)
+### Android
+
+![EasyComfyUI Android 工作流查看器](docs/screenshots/EasyComfyUI-android.png)
+
+### Web
+
+![EasyComfyUI Web 工作流查看器](docs/screenshots/EasyComfyUI-web.png)
 
 ## 下载
 
@@ -65,9 +70,8 @@ EasyComfyUI **不会自动下载模型或资源**。它只是把工作流中已�
 从 [Releases](https://github.com/Andrew-AI-Kitchen/EasyComfyUI/releases) 页面下载最新 APK。
 
 | 构建类型 | 文件 | 用途 |
-|---------|------|------|
+|---|---|---|
 | Alpha | `EasyComfyUI-v0.1.0-alpha.apk` | 真机文件管理器安装 |
-|---|---|---|---|
 
 ### Web
 
