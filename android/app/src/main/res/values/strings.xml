@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EasyComfyUI</string>
+    <string name="shell_ready">EasyComfyUI Android shell ready</string>
+    <string name="load_workflow">Load Workflow JSON</string>
+</resources>

@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>EasyComfyUI - Workflow Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a1a2e;
+      touch-action: none;
+    }
+    #graph-canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* ── File input overlay (top-right) ── */
+    #file-overlay {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    #file-overlay .load-btn {
+      display: inline-block;
+      padding: 10px 18px;
+      background: rgba(58, 58, 90, 0.80);
+      color: #d0d0f0;
+      border: 1px solid #5a5a8a;
+      border-radius: 8px;
+      font: 14px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: background 0.15s;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    #file-overlay .load-btn:hover {
+      background: rgba(78, 78, 130, 0.90);
+    }
+    #file-overlay .load-btn:active {
+      background: rgba(90, 90, 150, 0.95);
+    }
+    #file-overlay input[type="file"] {
+      display: none;
+    }
+    #file-overlay .hint {
+      color: #666688;
+      font: 11px/1.3 "Segoe UI", system-ui, sans-serif;
+      text-align: right;
+    }
+    #file-overlay .error {
+      color: #ff6666;
+      font: 11px/1.3 "Segoe UI", system-ui, sans-serif;
+      text-align: right;
+      max-width: 260px;
+    }
+
+    /* ── Left tools container (top-left) ── */
+    #left-tools {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: min(320px, calc(100vw - 32px));
+      max-width: 320px;
+    }
+
+    /* ── Search bar ── */
+    #search-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(48, 48, 80, 0.85);
+      border: 1px solid #5a5a8a;
+      border-radius: 8px;
+      padding: 4px 8px;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      width: 100%;
+    }
+    #search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #d0d0f0;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      outline: none;
+      padding: 4px 0;
+    }
+    #search-input::placeholder {
+      color: #666688;
+    }
+    #search-count {
+      color: #8888aa;
+      font: 11px/1 "Segoe UI", system-ui, sans-serif;
+      min-width: 50px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    #search-bar button {
+      background: transparent;
+      border: none;
+      color: #8888aa;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    #search-bar button:hover {
+      color: #d0d0f0;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* ── Left-tools toggle buttons (History / Nodes) ── */
+    .left-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(48, 48, 80, 0.85);
+      color: #d0d0f0;
+      border: 1px solid #5a5a8a;
+      border-radius: 8px;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: background 0.15s;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      width: 100%;
+    }
+    .left-toggle:hover {
+      background: rgba(78, 78, 130, 0.90);
+    }
+    .left-toggle:active {
+      background: rgba(90, 90, 150, 0.95);
+    }
+
+    /* ── Idle fade for History/Nodes controls ── */
+    .left-toggle.idle-fade,
+    .dropdown-panel.idle-fade {
+      transition: opacity 0.25s ease;
+    }
+    .left-toggle.idle-fade.is-idle {
+      opacity: 0.4;
+    }
+    .dropdown-panel.idle-fade.is-idle {
+      opacity: 0.55;
+    }
+    /* Search bar is NOT affected by idle fade */
+
+    /* ── Dropdown panels (History / Nodes) ── */
+    .dropdown-panel {
+      display: none;
+      position: fixed;
+      left: 16px;
+      z-index: 10;
+      width: min(320px, calc(100vw - 32px));
+      max-width: 320px;
+      max-height: min(45vh, 360px);
+      overflow-y: auto;
+      background: rgba(38, 38, 60, 0.95);
+      border: 1px solid #5a5a8a;
+      border-radius: 10px;
+      padding: 4px 0;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .dropdown-panel.open {
+      display: block;
+    }
+
+    /* ── History panel ── */
+    #history-panel .history-empty {
+      color: #666688;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      text-align: center;
+      padding: 16px 12px;
+    }
+    #history-panel .history-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(90, 90, 138, 0.25);
+      transition: background 0.1s;
+    }
+    #history-panel .history-item:last-child {
+      border-bottom: none;
+    }
+    #history-panel .history-item:hover {
+      background: rgba(78, 78, 130, 0.40);
+    }
+    #history-panel .history-item:active {
+      background: rgba(90, 90, 150, 0.50);
+    }
+    #history-panel .history-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+    #history-panel .history-item-name {
+      color: #d0d0f0;
+      font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #history-panel .history-item-meta {
+      color: #8888aa;
+      font: 11px/1.3 "Segoe UI", system-ui, sans-serif;
+      margin-top: 1px;
+    }
+    #history-panel .history-clear {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      border-top: 1px solid rgba(90, 90, 138, 0.3);
+      color: #ff6666;
+      font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.1s;
+    }
+    #history-panel .history-clear:hover {
+      background: rgba(255, 50, 50, 0.15);
+    }
+
+    /* ── Nodes panel ── */
+    #nodes-panel .nodes-empty {
+      color: #666688;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      text-align: center;
+      padding: 16px 12px;
+    }
+    #nodes-panel .nodes-header {
+      color: #b0b0cc;
+      font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+      padding: 4px 12px 8px;
+      border-bottom: 1px solid rgba(90, 90, 138, 0.2);
+      margin-bottom: 4px;
+    }
+    #nodes-panel .nodes-header .nodes-disclaimer {
+      color: #8888aa;
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    #nodes-panel .nodes-category {
+      margin-bottom: 2px;
+    }
+    #nodes-panel .nodes-category-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      color: #d0d0f0;
+      font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+      font-weight: 600;
+      cursor: default;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #nodes-panel .nodes-category-title .nodes-count {
+      color: #8888aa;
+      font-weight: 400;
+      font-size: 11px;
+      margin-left: auto;
+    }
+    #nodes-panel .nodes-category-title .nodes-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .nodes-dot-builtin { background: #4a9eff; }
+    .nodes-dot-subgraph { background: #a78bfa; }
+    .nodes-dot-known { background: #fbbf24; }
+    .nodes-dot-unknown { background: #f87171; }
+
+    #nodes-panel .nodes-item {
+      display: flex;
+      align-items: center;
+      padding: 4px 12px 4px 28px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.1s;
+      font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+      color: #c0c0dd;
+    }
+    #nodes-panel .nodes-item:hover {
+      background: rgba(78, 78, 130, 0.40);
+      color: #e0e0f0;
+    }
+    #nodes-panel .nodes-item:active {
+      background: rgba(90, 90, 150, 0.50);
+    }
+    #nodes-panel .nodes-item .nodes-item-type {
+      color: #8888aa;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    #nodes-panel .nodes-item .nodes-item-count {
+      color: #666688;
+      font-size: 11px;
+      margin-left: auto;
+      padding-left: 8px;
+    }
+    #nodes-panel .nodes-footer {
+      color: #666688;
+      font: 10px/1.3 "Segoe UI", system-ui, sans-serif;
+      text-align: center;
+      padding: 6px 12px;
+      border-top: 1px solid rgba(90, 90, 138, 0.2);
+      margin-top: 4px;
+    }
+
+    /* ── About panel ── */
+    #about-panel {
+      display: none;
+      position: fixed;
+      left: 16px;
+      z-index: 10;
+      width: min(320px, calc(100vw - 32px));
+      max-width: 320px;
+      max-height: min(60vh, 480px);
+      overflow-y: auto;
+      background: rgba(38, 38, 60, 0.97);
+      border: 1px solid #5a5a8a;
+      border-radius: 10px;
+      padding: 16px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    #about-panel.open {
+      display: block;
+    }
+    #about-panel .about-close {
+      float: right;
+      background: transparent;
+      border: none;
+      color: #8888aa;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: color 0.1s, background 0.1s;
+    }
+    #about-panel .about-close:hover {
+      color: #e0e0f0;
+      background: rgba(255,255,255,0.1);
+    }
+    #about-panel .about-title {
+      color: #e0e0f0;
+      font: 18px/1.3 "Segoe UI", system-ui, sans-serif;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    #about-panel .about-subtitle {
+      color: #b0b0cc;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      margin-bottom: 12px;
+    }
+    #about-panel .about-version {
+      color: #8888aa;
+      font: 12px/1.4 "Segoe UI", system-ui, sans-serif;
+      margin-bottom: 12px;
+    }
+    #about-panel .about-section {
+      margin-bottom: 10px;
+    }
+    #about-panel .about-section-label {
+      color: #8888aa;
+      font: 11px/1.3 "Segoe UI", system-ui, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    #about-panel .about-section-value {
+      color: #d0d0f0;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+    }
+    #about-panel .about-section-value a {
+      color: #4a9eff;
+      text-decoration: none;
+    }
+    #about-panel .about-section-value a:hover {
+      text-decoration: underline;
+    }
+    #about-panel .about-note {
+      color: #666688;
+      font: 11px/1.4 "Segoe UI", system-ui, sans-serif;
+      border-top: 1px solid rgba(90, 90, 138, 0.2);
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+
+    /* ── Bottom-left product badge ── */
+    #product-badge {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 9;
+      color: rgba(180, 180, 200, 0.55);
+      font: 11px/1.3 "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: color 0.15s, background 0.15s;
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: rgba(48, 48, 80, 0.30);
+      border: 1px solid rgba(90, 90, 138, 0.25);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    #product-badge:hover {
+      color: rgba(220, 220, 240, 0.90);
+      background: rgba(58, 58, 100, 0.55);
+      border-color: rgba(90, 90, 138, 0.45);
+    }
+
+    /* ── Custom confirm modal ── */
+    #confirm-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.55);
+      align-items: center;
+      justify-content: center;
+    }
+    #confirm-modal-overlay.open {
+      display: flex;
+    }
+    #confirm-modal {
+      background: rgba(42, 42, 68, 0.97);
+      border: 1px solid #5a5a8a;
+      border-radius: 12px;
+      padding: 20px 24px 16px;
+      width: min(320px, calc(100vw - 48px));
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    #confirm-modal-title {
+      color: #e0e0f0;
+      font: 15px/1.4 "Segoe UI", system-ui, sans-serif;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    #confirm-modal-body {
+      color: #b0b0cc;
+      font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+      margin-bottom: 18px;
+      word-break: break-word;
+    }
+    #confirm-modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    #confirm-modal-actions button {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid #5a5a8a;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    #confirm-modal-cancel {
+      background: rgba(58, 58, 90, 0.80);
+      color: #b0b0cc;
+    }
+    #confirm-modal-cancel:hover {
+      background: rgba(78, 78, 130, 0.90);
+    }
+    #confirm-modal-confirm {
+      background: rgba(70, 100, 200, 0.85);
+      color: #e0e0f0;
+      border-color: #6a7aaa !important;
+    }
+    #confirm-modal-confirm:hover {
+      background: rgba(80, 110, 220, 0.95);
+    }
+    #confirm-modal-confirm.danger {
+      background: rgba(200, 60, 60, 0.85);
+      border-color: #aa5a5a !important;
+    }
+    #confirm-modal-confirm.danger:hover {
+      background: rgba(220, 70, 70, 0.95);
+    }
+
+    /* ── Zoom controls (bottom-right) ── */
+    #zoom-controls {
+      position: fixed;
+      bottom: 24px;
+      right: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+    #zoom-controls .zoom-btn {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(48, 48, 80, 0.80);
+      color: #d0d0f0;
+      border: 1px solid #5a5a8a;
+      border-radius: 10px;
+      font: 20px/1 "Segoe UI", system-ui, -apple-system, sans-serif;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: background 0.15s;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      touch-action: manipulation;
+    }
+    #zoom-controls .zoom-btn:hover {
+      background: rgba(78, 78, 130, 0.90);
+    }
+    #zoom-controls .zoom-btn:active {
+      background: rgba(100, 100, 160, 0.95);
+    }
+    #zoom-controls .zoom-btn.fit-btn {
+      font-size: 13px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="graph-canvas"></canvas>
+
+  <!-- File input overlay (top-right) -->
+  <div id="file-overlay">
+    <div class="load-btn" id="load-workflow-btn">📂 Load Workflow</div>
+    <input type="file" id="workflow-file" accept=".json,application/json">
+    <div class="hint">or refresh to see demo</div>
+    <div id="load-error" class="error" style="display:none;"></div>
+  </div>
+
+  <!-- Left tools container (top-left) -->
+  <div id="left-tools">
+    <!-- Search bar -->
+    <div id="search-bar">
+      <input type="text" id="search-input" placeholder="Search nodes..." autocomplete="off">
+      <span id="search-count"></span>
+      <button id="search-clear-btn" title="Clear search">✕</button>
+      <button id="search-next-btn" title="Next match (Enter)">▼</button>
+    </div>
+
+    <!-- History toggle -->
+    <div class="left-toggle idle-fade" id="history-toggle">📋 History ▼</div>
+
+    <!-- Nodes toggle -->
+    <div class="left-toggle idle-fade" id="nodes-toggle">🔍 Nodes ▼</div>
+  </div>
+
+  <!-- History dropdown panel -->
+  <div id="history-panel" class="dropdown-panel idle-fade"></div>
+
+  <!-- Nodes dropdown panel -->
+  <div id="nodes-panel" class="dropdown-panel idle-fade"></div>
+
+  <!-- About panel -->
+  <div id="about-panel"></div>
+
+  <!-- Product badge (bottom-left) -->
+  <div id="product-badge">ⓘ EasyComfyUI · v0.1-alpha</div>
+
+  <!-- Zoom controls -->
+  <div id="zoom-controls">
+    <div class="zoom-btn" id="zoom-in-btn">＋</div>
+    <div class="zoom-btn" id="zoom-out-btn">−</div>
+    <div class="zoom-btn fit-btn" id="zoom-fit-btn">Fit</div>
+  </div>
+
+  <!-- Custom confirm modal -->
+  <div id="confirm-modal-overlay">
+    <div id="confirm-modal">
+      <div id="confirm-modal-title"></div>
+      <div id="confirm-modal-body"></div>
+      <div id="confirm-modal-actions">
+        <button id="confirm-modal-cancel">Cancel</button>
+        <button id="confirm-modal-confirm">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+  <script type="module">
+    import { createDemoWorkflow } from './js/parser.js'
+    import { classifyNodes } from './js/node-classifier.js'
+
+    // Show demo workflow on initial load
+    window.renderWorkflow({ demo: true })
+
+    // ── File input handler ──
+    const fileInput = document.getElementById("workflow-file")
+    const loadBtn = document.getElementById("load-workflow-btn")
+    const errorEl = document.getElementById("load-error")
+    const showError = (message) => {
+      errorEl.textContent = message
+      errorEl.style.display = "block"
+    }
+
+    const clearError = () => {
+      errorEl.textContent = ""
+      errorEl.style.display = "none"
+    }
+
+    // Try Android bridge first, fall back to browser file input
+    loadBtn.addEventListener("click", () => {
+      clearError()
+      if (window.AndroidBridge && typeof window.AndroidBridge.openWorkflowPicker === 'function') {
+        window.AndroidBridge.openWorkflowPicker()
+      } else {
+        // Browser fallback: trigger hidden file input
+        fileInput.click()
+      }
+    })
+
+    fileInput.addEventListener("change", (event) => {
+      const file = event.target.files[0]
+      if (!file) return
+
+      clearError()
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const text = event.target.result
+          const workflow = JSON.parse(text)
+          window.renderWorkflow(workflow)
+        } catch (error) {
+          console.error(error)
+          if (error instanceof SyntaxError) {
+            showError(`JSON parse error: ${error.message}`)
+          } else {
+            showError(`Render error: ${error.message}`)
+          }
+        }
+      }
+      reader.onerror = (error) => {
+        console.error(error)
+        showError("Failed to read file")
+      }
+      reader.readAsText(file)
+    })
+
+    // ── History UI ──
+    let historyData = []
+    const LS_KEY = 'easycomfyui.workflowHistory'
+    const MAX_HISTORY = 20
+
+    // ── Custom confirm modal ──
+    const modalOverlay = document.getElementById('confirm-modal-overlay')
+    const modalTitle = document.getElementById('confirm-modal-title')
+    const modalBody = document.getElementById('confirm-modal-body')
+    const modalCancel = document.getElementById('confirm-modal-cancel')
+    const modalConfirm = document.getElementById('confirm-modal-confirm')
+
+    let modalResolve = null
+
+    function showConfirmModal(title, body, confirmText, isDanger) {
+      return new Promise((resolve) => {
+        modalTitle.textContent = title
+        modalBody.textContent = body
+        modalConfirm.textContent = confirmText || 'OK'
+        modalConfirm.className = isDanger ? 'danger' : ''
+        modalOverlay.classList.add('open')
+        modalResolve = resolve
+      })
+    }
+
+    function closeModal(result) {
+      modalOverlay.classList.remove('open')
+      if (modalResolve) {
+        modalResolve(result)
+        modalResolve = null
+      }
+    }
+
+    modalCancel.addEventListener('click', () => closeModal(false))
+    modalConfirm.addEventListener('click', () => closeModal(true))
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) closeModal(false)
+    })
+
+    // ── Browser localStorage history ──
+    function loadBrowserHistory() {
+      try {
+        const raw = localStorage.getItem(LS_KEY)
+        return raw ? JSON.parse(raw) : []
+      } catch (e) {
+        console.warn('Failed to load browser history from localStorage', e)
+        return []
+      }
+    }
+
+    function saveBrowserHistory(entries) {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(entries))
+      } catch (e) {
+        console.warn('Failed to save browser history to localStorage', e)
+      }
+    }
+
+    function addBrowserHistory(fileName, nodeCount, linkCount) {
+      let entries = loadBrowserHistory()
+      const now = Date.now()
+
+      // Dedup by fileName
+      entries = entries.filter(e => e.fileName !== fileName)
+
+      const newEntry = {
+        id: 'browser_' + now,
+        fileName: fileName,
+        openedAt: now,
+        nodeCount: nodeCount || 0,
+        linkCount: linkCount || 0,
+        source: 'browser'
+      }
+      entries.unshift(newEntry)
+
+      // Trim to max
+      if (entries.length > MAX_HISTORY) entries = entries.slice(0, MAX_HISTORY)
+
+      saveBrowserHistory(entries)
+      return entries
+    }
+
+    // ── Public API ──
+    window.updateWorkflowHistory = function (history) {
+      historyData = history || []
+      renderHistoryPanel()
+    }
+
+    function renderHistoryPanel() {
+      const panel = document.getElementById('history-panel')
+      if (!panel) return
+
+      if (!historyData || historyData.length === 0) {
+        panel.innerHTML = '<div class="history-empty">No history yet</div>'
+        return
+      }
+
+      let html = ''
+      for (const item of historyData) {
+        const date = new Date(item.openedAt)
+        const dateStr = date.toLocaleString(undefined, {
+          month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        })
+        const meta = `${item.nodeCount || 0} nodes · ${item.linkCount || 0} links · ${dateStr}`
+        html += `<div class="history-item" data-id="${escapeHtml(item.id)}">
+          <div class="history-item-info">
+            <div class="history-item-name">${escapeHtml(item.fileName || 'unknown')}</div>
+            <div class="history-item-meta">${meta}</div>
+          </div>
+        </div>`
+      }
+      html += '<button class="history-clear" id="history-clear-btn">🗑 Clear History</button>'
+      panel.innerHTML = html
+
+      // Attach click handlers
+      panel.querySelectorAll('.history-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.getAttribute('data-id')
+          onHistoryItemClick(id)
+        })
+      })
+      const clearBtn = document.getElementById('history-clear-btn')
+      if (clearBtn) {
+        clearBtn.addEventListener('click', onClearHistory)
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div')
+      div.textContent = str
+      return div.innerHTML
+    }
+
+    // ── History item click ──
+    async function onHistoryItemClick(id) {
+      // Find the item to get fileName for modal body
+      const item = historyData.find(h => h.id === id)
+      const fileName = item ? item.fileName : 'this workflow'
+
+      const confirmed = await showConfirmModal(
+        'Open workflow?',
+        fileName,
+        'Open',
+        false
+      )
+      if (!confirmed) return
+
+      if (window.AndroidBridge && typeof window.AndroidBridge.openHistoryItem === 'function') {
+        window.AndroidBridge.openHistoryItem(id)
+      } else {
+        // Browser fallback: show info modal instead of alert
+        await showConfirmModal(
+          'Cannot open file',
+          'Browser mode cannot reopen local files directly. Please choose the file again.',
+          'OK',
+          false
+        )
+      }
+    }
+
+    // ── Clear history ──
+    async function onClearHistory() {
+      const confirmed = await showConfirmModal(
+        'Clear history?',
+        'This will remove all recent workflow records.',
+        'Clear',
+        true
+      )
+      if (!confirmed) return
+
+      if (window.AndroidBridge && typeof window.AndroidBridge.clearHistory === 'function') {
+        window.AndroidBridge.clearHistory()
+      } else {
+        // Browser: clear localStorage and local state
+        try { localStorage.removeItem(LS_KEY) } catch (e) {}
+        historyData = []
+        renderHistoryPanel()
+      }
+    }
+
+    // ── Panel positioning helper ──
+    function positionPanelBelowTools(panelEl) {
+      // Position the panel below the left-tools container
+      // The container is at top:16px, and has 3 items with 10px gap
+      // Approximate height: search-bar (~36px) + toggle1 (~36px) + toggle2 (~36px) + 2 gaps (20px) = ~128px
+      // So panel top = 16 + 128 + 8 = ~152px
+      if (panelEl) {
+        panelEl.style.top = '152px'
+      }
+    }
+
+    // ── Idle fade timer for History/Nodes controls ──
+    let _idleTimer = null
+    const IDLE_DELAY = 2000
+
+    function wakeControls() {
+      // Remove .is-idle from all idle-fade elements
+      document.querySelectorAll('.idle-fade').forEach(el => {
+        el.classList.remove('is-idle')
+      })
+      // Reset timer
+      if (_idleTimer) clearTimeout(_idleTimer)
+      _idleTimer = setTimeout(() => {
+        document.querySelectorAll('.idle-fade').forEach(el => {
+          el.classList.add('is-idle')
+        })
+      }, IDLE_DELAY)
+    }
+
+    // Attach wake events to idle-fade elements and their children
+    function attachIdleWakeEvents() {
+      const idleEls = document.querySelectorAll('.idle-fade')
+      const events = ['mouseenter', 'pointerdown', 'touchstart', 'focus', 'input', 'scroll']
+      idleEls.forEach(el => {
+        events.forEach(evt => {
+          el.addEventListener(evt, wakeControls, { passive: true })
+        })
+      })
+    }
+
+    // Initial wake (start idle timer after page load)
+    wakeControls()
+    attachIdleWakeEvents()
+
+    // ── History toggle (mutually exclusive with Nodes) ──
+    const historyToggle = document.getElementById('history-toggle')
+    const historyPanel = document.getElementById('history-panel')
+    const nodesToggle = document.getElementById('nodes-toggle')
+    const nodesPanel = document.getElementById('nodes-panel')
+
+    positionPanelBelowTools(historyPanel)
+    positionPanelBelowTools(nodesPanel)
+
+    if (historyToggle) {
+      historyToggle.addEventListener('click', () => {
+        const isOpen = historyPanel.classList.contains('open')
+        if (isOpen) {
+          historyPanel.classList.remove('open')
+        } else {
+          // Close nodes panel first (mutual exclusion)
+          if (nodesPanel) nodesPanel.classList.remove('open')
+          // Refresh data from Android or localStorage before opening
+          if (window.AndroidBridge && typeof window.AndroidBridge.getHistory === 'function') {
+            try {
+              const json = window.AndroidBridge.getHistory()
+              historyData = JSON.parse(json)
+              renderHistoryPanel()
+            } catch (e) {
+              console.warn('Failed to get history from AndroidBridge', e)
+            }
+          } else {
+            // Browser: load from localStorage
+            historyData = loadBrowserHistory()
+            renderHistoryPanel()
+          }
+          historyPanel.classList.add('open')
+        }
+      })
+    }
+
+    // ── Nodes panel ──────────────────────────────────────────────────
+    let _lastClassification = null
+
+    function computeNodeSummary() {
+      // Access parsed workflow data from main.js state via window.renderWorkflow's stored data
+      // The parsed workflow is stored in state._parsedWorkflow by main.js
+      const parsed = window._lastParsedWorkflow
+      if (!parsed || !parsed.nodes || parsed.nodes.length === 0) {
+        _lastClassification = null
+        return null
+      }
+      const subgraphs = (parsed.definitions && parsed.definitions.subgraphs) || []
+      const summary = classifyNodes(parsed.nodes, subgraphs)
+      _lastClassification = summary
+      return summary
+    }
+
+    function renderNodesPanel() {
+      const panel = document.getElementById('nodes-panel')
+      if (!panel) return
+
+      const summary = computeNodeSummary()
+      if (!summary) {
+        panel.innerHTML = '<div class="nodes-empty">No workflow loaded</div>'
+        return
+      }
+
+      const total =
+        (summary.builtin?.length || 0) +
+        (summary.subgraph?.length || 0) +
+        (summary.knownCustom?.length || 0) +
+        (summary.unknown?.length || 0)
+
+      if (total === 0) {
+        panel.innerHTML = '<div class="nodes-empty">No workflow loaded</div>'
+        return
+      }
+
+      let html = '<div class="nodes-header">Node source summary<div class="nodes-disclaimer">Best-effort classification based on local snapshot.</div></div>'
+
+      // Helper to render a category section
+      function renderCategory(label, items, dotClass) {
+        if (!items || items.length === 0) return ''
+        // Count unique types
+        const typeCounts = {}
+        for (const item of items) {
+          const key = item.type || item.displayName
+          typeCounts[key] = (typeCounts[key] || 0) + 1
+        }
+        const uniqueTypes = Object.keys(typeCounts)
+        let section = `<div class="nodes-category">
+          <div class="nodes-category-title">
+            <span class="nodes-dot ${dotClass}"></span>
+            ${label}
+            <span class="nodes-count">${items.length}</span>
+          </div>`
+        for (const type of uniqueTypes) {
+          const count = typeCounts[type]
+          const displayName = items.find(i => i.type === type)?.displayName || type
+          const countStr = count > 1 ? ` ×${count}` : ''
+          section += `<div class="nodes-item" data-search="${type}">
+            <span>${escapeHtml(displayName)}</span>
+            <span class="nodes-item-type">${escapeHtml(type)}</span>
+            <span class="nodes-item-count">${countStr}</span>
+          </div>`
+        }
+        section += '</div>'
+        return section
+      }
+
+      html += renderCategory('Built-in Core', summary.builtin, 'nodes-dot-builtin')
+      html += renderCategory('Subgraph', summary.subgraph, 'nodes-dot-subgraph')
+      html += renderCategory('Known Custom', summary.knownCustom, 'nodes-dot-known')
+      html += renderCategory('Unknown / likely custom', summary.unknown, 'nodes-dot-unknown')
+
+      html += '<div class="nodes-footer">Best-effort only. Custom node detection may be incomplete.</div>'
+
+      panel.innerHTML = html
+
+      // Attach click handlers for search integration
+      panel.querySelectorAll('.nodes-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const searchType = el.getAttribute('data-search')
+          if (!searchType) return
+          // Set search input value and trigger search
+          const searchInput = document.getElementById('search-input')
+          if (searchInput) {
+            searchInput.value = searchType
+          }
+          if (window.performSearch) {
+            window.performSearch(searchType)
+          }
+          // Close the nodes panel
+          panel.classList.remove('open')
+          // Close history panel if open
+          if (historyPanel) historyPanel.classList.remove('open')
+        })
+      })
+    }
+
+    // ── Nodes toggle (mutually exclusive with History) ──
+    if (nodesToggle) {
+      nodesToggle.addEventListener('click', () => {
+        const isOpen = nodesPanel.classList.contains('open')
+        if (isOpen) {
+          nodesPanel.classList.remove('open')
+        } else {
+          // Close history panel first (mutual exclusion)
+          if (historyPanel) historyPanel.classList.remove('open')
+          // Recompute summary before opening
+          renderNodesPanel()
+          nodesPanel.classList.add('open')
+        }
+      })
+    }
+
+    // ── About panel ──────────────────────────────────────────────────
+    const APP_NAME = 'EasyComfyUI'
+    const APP_VERSION = 'v0.1-alpha'
+    const APP_REPO_URL = 'https://github.com/Andrew-AI-Kitchen/EasyComfyUI'
+
+    const aboutPanel = document.getElementById('about-panel')
+    const productBadge = document.getElementById('product-badge')
+
+    function renderAboutPanel() {
+      if (!aboutPanel) return
+      aboutPanel.innerHTML = `
+        <button class="about-close" id="about-close-btn">×</button>
+        <div class="about-title">${APP_NAME}</div>
+        <div class="about-subtitle">A read-only ComfyUI workflow viewer for fragmented learning, review, and node-level exploration.</div>
+        <div class="about-version">Version ${APP_VERSION}</div>
+        <div class="about-section">
+          <div class="about-section-label">Description</div>
+          <div class="about-section-value">Open shared ComfyUI workflows on mobile or in the browser, inspect node structure, read notes, follow resource links, search key nodes, and understand how a workflow is assembled — without running or editing it.</div>
+        </div>
+        <div class="about-section">
+          <div class="about-section-label">Compatibility</div>
+          <div class="about-section-value">✓ Android app · ✓ Web browser · ○ macOS via browser · ○ iOS not tested</div>
+        </div>
+        <div class="about-section">
+          <div class="about-section-label">Project</div>
+          <div class="about-section-value"><a href="${APP_REPO_URL}" target="_blank" id="about-repo-link">${APP_REPO_URL}</a></div>
+        </div>
+        <div class="about-section">
+          <div class="about-section-label">Scope</div>
+          <div class="about-section-value">Read-only visualization. No workflow execution. No node editing.</div>
+        </div>
+        <div class="about-note">Node source classification is best-effort and based on a local snapshot.</div>
+      `
+
+      // Close button
+      document.getElementById('about-close-btn').addEventListener('click', () => {
+        aboutPanel.classList.remove('open')
+      })
+
+      // GitHub link — use openUrl for Android, _blank for browser
+      const repoLink = document.getElementById('about-repo-link')
+      if (repoLink) {
+        repoLink.addEventListener('click', (e) => {
+          e.preventDefault()
+          const url = repoLink.getAttribute('href')
+          if (window.AndroidBridge && typeof window.AndroidBridge.openExternalUrl === 'function') {
+            window.AndroidBridge.openExternalUrl(url)
+          } else {
+            window.open(url, '_blank', 'noopener,noreferrer')
+          }
+        })
+      }
+    }
+
+    // Position about panel
+    positionPanelBelowTools(aboutPanel)
+
+    // Product badge click → toggle About panel
+    if (productBadge) {
+      productBadge.addEventListener('click', () => {
+        const isOpen = aboutPanel.classList.contains('open')
+        if (isOpen) {
+          aboutPanel.classList.remove('open')
+        } else {
+          // Close other panels
+          if (historyPanel) historyPanel.classList.remove('open')
+          if (nodesPanel) nodesPanel.classList.remove('open')
+          renderAboutPanel()
+          aboutPanel.classList.add('open')
+        }
+      })
+    }
+
+    // ── Hook into file load to record browser history ──
+    // Wrap renderWorkflow to detect browser-side workflow loads
+    const _origRenderWorkflow = window.renderWorkflow
+    window.renderWorkflow = function (json) {
+      // Call original (defined in main.js)
+      _origRenderWorkflow(json)
+
+      // Store parsed workflow data for node classifier access
+      // main.js stores it in state._parsedWorkflow after render
+      // We access it via the internal state reference
+      window._lastParsedWorkflow = json
+
+      // Record browser history for non-demo workflows (no AndroidBridge)
+      if (json && json.demo !== true && !window.AndroidBridge) {
+        const nodes = json.nodes
+        const links = json.links
+        const nodeCount = (nodes && nodes.length) || 0
+        const linkCount = (links && links.length) || 0
+        const fileName = json._fileName || 'workflow.json'
+
+        const entries = addBrowserHistory(fileName, nodeCount, linkCount)
+        historyData = entries
+      }
+    }
+
+    // Patch the file input handler to attach fileName to the parsed JSON
+    // Store the fileName when file is selected, then attach it via wrapped JSON.parse
+    let _pendingFileName = null
+    fileInput.addEventListener('change', function () {
+      const file = this.files[0]
+      _pendingFileName = file ? file.name : null
+    })
+
+    // Wrap JSON.parse to attach _fileName when called from file reader context
+    const _origJSONParse = JSON.parse
+    JSON.parse = function (text, reviver) {
+      const result = _origJSONParse(text, reviver)
+      // If we have a pending fileName and the result looks like a workflow, attach it
+      if (_pendingFileName && result && typeof result === 'object' && !result.demo) {
+        result._fileName = _pendingFileName
+        _pendingFileName = null
+      }
+      return result
+    }
+
+    // ── Zoom control handlers ──
+    document.getElementById("zoom-in-btn").addEventListener("click", () => {
+      if (window.viewerZoomIn) window.viewerZoomIn()
+    })
+    document.getElementById("zoom-out-btn").addEventListener("click", () => {
+      if (window.viewerZoomOut) window.viewerZoomOut()
+    })
+    document.getElementById("zoom-fit-btn").addEventListener("click", () => {
+      if (window.viewerFit) window.viewerFit()
+    })
+  </script>
+</body>
+</html>
