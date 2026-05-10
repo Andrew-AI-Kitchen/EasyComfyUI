@@ -165,6 +165,19 @@ EasyComfyUI is an independent, third-party project. Here is what you should know
 - Some complex widget types may not render perfectly
 - Performance may degrade with very large workflows (1000+ nodes)
 
+## Sample workflows
+
+Sample workflow JSON files are available in [`sample-workflows/`](sample-workflows/).
+
+They are included for viewer testing, learning, and compatibility demonstration. The workflows are sourced from public Civitai pages, and their authorship, licensing, model requirements, and setup instructions should be checked on the original pages.
+
+Sources:
+
+- [VideoFlow LTX 2.3 / Wan 2.2 I2V workflow](https://civitai.com/models/1815300/videoflow-ltx-23-wan-2221-i2v-image-to-video-img2vid-workflow)
+- [Illustrious Pony SDXL pro-grade workflow](https://civitai.com/models/2189190/illustrious-pony-sdxl-pro-grade-workflow-low-or-high-vram?modelVersionId=2888654)
+
+Thanks to the original workflow creators and the Civitai community.
+
 ## Roadmap
 
 - [ ] Package a macOS desktop version with full local history support

@@ -165,6 +165,19 @@ EasyComfyUI 是一个独立的第三方项目。请注意以下声明：
 - 部分复杂控件类型可能无法完美渲染
 - 超大型工作流（1000+ 节点）性能可能下降
 
+## 示例工作流
+
+示例 ComfyUI workflow JSON 文件会放在 [`sample-workflows/`](sample-workflows/) 目录中。
+
+这些文件主要用于 EasyComfyUI 的查看器测试、功能演示和学习参考。workflow 来源于公开的 Civitai 页面，其作者、许可、模型依赖和安装说明请以原始页面为准。
+
+来源：
+
+- [VideoFlow LTX 2.3 / Wan 2.2 I2V workflow](https://civitai.com/models/1815300/videoflow-ltx-23-wan-2221-i2v-image-to-video-img2vid-workflow)
+- [Illustrious Pony SDXL pro-grade workflow](https://civitai.com/models/2189190/illustrious-pony-sdxl-pro-grade-workflow-low-or-high-vram?modelVersionId=2888654)
+
+感谢原 workflow 作者和 Civitai 社区。
+
 ## 路线图
 
 - [ ] 打包 macOS 桌面版本，提供更完整的本地历史记录体验
